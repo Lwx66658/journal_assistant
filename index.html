@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="刊行——书刊编辑出版协作管理台" />
+  <title>刊行 · 编辑出版工作台</title>
+  <link rel="stylesheet" href="styles.css?v=2" />
+</head>
+<body>
+  <div id="loginView" class="login-shell">
+    <section class="login-story" aria-label="产品介绍">
+      <div class="brand brand--light"><span class="brand-mark">刊</span><span>刊行</span></div>
+      <div class="story-copy">
+        <p class="eyebrow">PUBLISHING WORKSPACE</p>
+        <h1>让每一本书刊，<br />有序抵达完成。</h1>
+        <p>从任务分配到进度跟进，把编辑协作汇聚在一个清晰的工作台。</p>
+      </div>
+      <div class="story-card" aria-hidden="true">
+        <div class="story-card__top"><span>《城市与微光》</span><span class="live-dot">进行中</span></div>
+        <div class="flow-preview">
+          <span><i class="avatar avatar--purple">林</i> 林默</span>
+          <b></b>
+          <span class="mini-status mini-status--blue">初稿完成</span>
+          <b></b>
+          <span class="mini-status mini-status--amber">等待复核</span>
+        </div>
+      </div>
+      <p class="story-footer">© 2026 刊行编辑协作平台</p>
+    </section>
+
+    <main class="login-panel">
+      <form id="loginForm" class="login-form">
+        <div class="mobile-brand brand"><span class="brand-mark">刊</span><span>刊行</span></div>
+        <p class="eyebrow eyebrow--orange">WELCOME BACK</p>
+        <h2>登录刊行</h2>
+        <p class="muted">系统将根据账号身份进入对应工作台</p>
+        <label>账号
+          <span class="input-wrap">
+            <svg viewBox="0 0 24 24"><path d="M20 21a8 8 0 0 0-16 0M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z"/></svg>
+            <input id="username" autocomplete="username" value="admin" placeholder="请输入账号" required />
+          </span>
+        </label>
+        <label>密码
+          <span class="input-wrap">
+            <svg viewBox="0 0 24 24"><rect x="3" y="10" width="18" height="11" rx="2"/><path d="M7 10V7a5 5 0 0 1 10 0v3"/></svg>
+            <input id="password" type="password" autocomplete="current-password" value="123456" placeholder="请输入密码" required />
+            <button class="icon-button eye-button" type="button" aria-label="显示密码">
+              <svg viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg>
+            </button>
+          </span>
+        </label>
+        <div class="login-options"><label class="check-row"><input type="checkbox" checked /> 记住登录状态</label><a href="#" id="forgotLink">忘记密码？</a></div>
+        <button class="primary-button login-button" type="submit">进入工作台 <span>→</span></button>
+        <div class="demo-accounts" aria-label="演示账号">
+          <button type="button" data-demo-account="admin"><strong>管理员演示</strong><span>admin / 123456</span></button>
+          <button type="button" data-demo-account="linmo"><strong>员工演示</strong><span>linmo / 123456</span></button>
+        </div>
+      </form>
+    </main>
+  </div>
+
+  <div id="appView" class="app-shell is-hidden">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">刊</span><span>刊行</span></div>
+      <nav class="main-nav" aria-label="主导航">
+        <button class="nav-item active" data-page="dashboard"><span data-icon="grid"></span>工作台</button>
+        <button class="nav-item" data-page="publications"><span data-icon="book"></span>书刊管理</button>
+        <button class="nav-item" data-page="assignments"><span data-icon="users"></span>任务分配</button>
+        <button class="nav-item" data-page="progress"><span data-icon="chart"></span>进度报告</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <button class="nav-item" id="settingsButton"><span data-icon="settings"></span>系统设置</button>
+        <div class="admin-card">
+          <span class="avatar avatar--dark">管</span>
+          <span><strong>内容管理员</strong><small>admin@kanxing.cn</small></span>
+          <button class="icon-button" id="logoutButton" aria-label="退出登录"><span data-icon="logout"></span></button>
+        </div>
+      </div>
+    </aside>
+
+    <div class="workspace">
+      <header class="topbar">
+        <button class="icon-button menu-button" id="menuButton" aria-label="展开导航"><span data-icon="menu"></span></button>
+        <div><h1 id="pageTitle">工作台</h1><p id="pageSubtitle">今天也一起把好内容认真完成。</p></div>
+        <div class="top-actions">
+          <label class="global-search"><span data-icon="search"></span><input id="globalSearch" placeholder="搜索书刊或员工…" /></label>
+          <button class="icon-button notification-button" aria-label="通知"><span data-icon="bell"></span><i></i></button>
+          <span class="avatar avatar--orange">管</span>
+        </div>
+      </header>
+      <main id="pageContent" class="page-content"></main>
+    </div>
+  </div>
+
+  <div id="employeeView" class="app-shell employee-shell is-hidden">
+    <aside class="sidebar employee-sidebar">
+      <div class="brand"><span class="brand-mark">刊</span><span>刊行</span></div>
+      <p class="sidebar-label">员工工作台</p>
+      <nav class="main-nav" aria-label="员工导航">
+        <button class="nav-item active"><span data-icon="book"></span>我的书刊</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="admin-card">
+          <span id="employeeSidebarAvatar" class="avatar avatar--purple">林</span>
+          <span><strong id="employeeSidebarName">林默</strong><small id="employeeSidebarRole">责任编辑</small></span>
+          <button class="icon-button" id="employeeLogoutButton" aria-label="退出登录"><span data-icon="logout"></span></button>
+        </div>
+      </div>
+    </aside>
+
+    <div class="workspace">
+      <header class="topbar employee-topbar">
+        <button class="icon-button menu-button" id="employeeMenuButton" aria-label="展开导航"><span data-icon="menu"></span></button>
+        <div><h1>我的书刊</h1><p>填写负责书刊的最新进度主题与备注。</p></div>
+        <div class="top-actions">
+          <span class="employee-greeting" id="employeeGreeting">你好，林默</span>
+          <span id="employeeTopAvatar" class="avatar avatar--purple">林</span>
+        </div>
+      </header>
+      <main id="employeeContent" class="page-content"></main>
+    </div>
+  </div>
+
+  <div id="modalRoot"></div>
+  <div id="toastRoot" class="toast-root" aria-live="polite"></div>
+  <script src="app.js?v=2"></script>
+</body>
+</html>
