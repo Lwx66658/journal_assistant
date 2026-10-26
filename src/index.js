@@ -11,6 +11,12 @@ const STATIC_FILES = {
   '/styles.css': { file: 'styles.css', type: 'text/css; charset=utf-8' }
 };
 
+// 内存存储（演示用，重启后数据会丢失）
+// 生产环境应该使用 D1 数据库或 KV
+let memoryStore = {
+  publications: []
+};
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -82,22 +88,20 @@ async function handleAPI(request, env, path, corsHeaders) {
 
   // 书刊数据 API - 获取列表
   if (path === '/api/publications' && request.method === 'GET') {
-    const data = await env.KV_STORE.get('publications', { type: 'json' });
-    return new Response(JSON.stringify(data || []), { headers });
+    return new Response(JSON.stringify(memoryStore.publications || []), { headers });
   }
 
   // 书刊数据 API - 保存/更新
   if (path === '/api/publications' && request.method === 'POST') {
     const publications = await request.json();
-    await env.KV_STORE.put('publications', JSON.stringify(publications));
+    memoryStore.publications = publications;
     return new Response(JSON.stringify({ success: true }), { headers });
   }
 
   // 获取单个书刊
   if (path.match(/^\/api\/publications\/\d+$/) && request.method === 'GET') {
     const id = parseInt(path.split('/').pop());
-    const data = await env.KV_STORE.get('publications', { type: 'json' }) || [];
-    const publication = data.find(p => p.id === id);
+    const publication = memoryStore.publications.find(p => p.id === id);
 
     if (publication) {
       return new Response(JSON.stringify(publication), { headers });
@@ -112,13 +116,14 @@ async function handleAPI(request, env, path, corsHeaders) {
   if (path.match(/^\/api\/publications\/\d+$/) && request.method === 'PUT') {
     const id = parseInt(path.split('/').pop());
     const updates = await request.json();
-    const data = await env.KV_STORE.get('publications', { type: 'json' }) || [];
-    const index = data.findIndex(p => p.id === id);
+    const index = memoryStore.publications.findIndex(p => p.id === id);
 
     if (index !== -1) {
-      data[index] = { ...data[index], ...updates };
-      await env.KV_STORE.put('publications', JSON.stringify(data));
-      return new Response(JSON.stringify({ success: true, data: data[index] }), { headers });
+      memoryStore.publications[index] = { ...memoryStore.publications[index], ...updates };
+      return new Response(JSON.stringify({
+        success: true,
+        data: memoryStore.publications[index]
+      }), { headers });
     }
 
     return new Response(JSON.stringify({ error: 'Not found' }), {
@@ -130,11 +135,10 @@ async function handleAPI(request, env, path, corsHeaders) {
   // 删除书刊
   if (path.match(/^\/api\/publications\/\d+$/) && request.method === 'DELETE') {
     const id = parseInt(path.split('/').pop());
-    const data = await env.KV_STORE.get('publications', { type: 'json' }) || [];
-    const filtered = data.filter(p => p.id !== id);
+    const originalLength = memoryStore.publications.length;
+    memoryStore.publications = memoryStore.publications.filter(p => p.id !== id);
 
-    if (filtered.length < data.length) {
-      await env.KV_STORE.put('publications', JSON.stringify(filtered));
+    if (memoryStore.publications.length < originalLength) {
       return new Response(JSON.stringify({ success: true }), { headers });
     }
 
