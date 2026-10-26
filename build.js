@@ -29,7 +29,8 @@ const staticFilePlaceholder = /async function getStaticFile\(filename\)[\s\S]*?r
 if (!staticFilePlaceholder.test(workerTemplate)) {
   throw new Error('找不到静态资源注入位置，构建已停止');
 }
-const finalWorkerCode = workerTemplate.replace(staticFilePlaceholder, staticFilesMap.trim());
+// 使用函数作为 replacement，避免 String.replace 把前端代码中的 `$$` 等字符当作替换标记。
+const finalWorkerCode = workerTemplate.replace(staticFilePlaceholder, () => staticFilesMap.trim());
 
 // 将构建产物与源文件分开，避免重复构建时修改或污染入口模板。
 const outputDirectory = path.join(__dirname, 'dist');

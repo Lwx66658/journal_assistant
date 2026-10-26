@@ -6,7 +6,10 @@
   "scripts": {
     "build": "node build.js",
     "deploy": "npm run build && wrangler deploy",
-    "dev": "npm run build && wrangler dev"
+    "dev": "npm run build && wrangler dev",
+    "db:init:local": "wrangler d1 execute journal_db --local --file=./schema.sql",
+    "db:init:remote": "wrangler d1 execute journal_db --remote --file=./schema.sql",
+    "test:smoke": "node tests/smoke.mjs"
   },
   "keywords": [
     "cloudflare",

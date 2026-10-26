@@ -15,7 +15,7 @@ const icons = {
   dots: '<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="19" cy="12" r="1" fill="currentColor"/></svg>'
 };
 
-const employees = [
+let employees = [
   { id: 1, username: 'linmo', name: '林默', role: '责任编辑', avatar: '林', color: 'purple' },
   { id: 2, username: 'zhouxiao', name: '周晓', role: '文字编辑', avatar: '周', color: 'blue' },
   { id: 3, username: 'chenxu', name: '陈叙', role: '设计编辑', avatar: '陈', color: 'green' },
@@ -23,43 +23,37 @@ const employees = [
   { id: 5, username: 'tangtang', name: '唐棠', role: '文字编辑', avatar: '唐', color: 'orange' }
 ];
 
-const initialPublications = [
-  { id: 1, title: '城市与微光', code: 'BOOK-2026-018', type: '图书', deadline: '2026-11-12', note: '城市人文观察系列首辑', cover: 0, assignments: [{ employeeId:1,topic:'第一轮文字编辑推进中',note:'已完成前三章编辑，正在统一人物称谓。',updatedAt:'2026-10-20 09:30' },{ employeeId:2,topic:'初稿问题清单已整理',note:'共标记 18 处待作者确认内容。',updatedAt:'2026-10-19 16:40' },{ employeeId:3,topic:'封面方向稿已提交',note:'已提供两套视觉方向供选。',updatedAt:'2026-10-18 14:20' }] },
-  { id: 2, title: '山河地理 · 秋季刊', code: 'MAG-2026-042', type: '期刊', deadline: '2026-10-28', note: '自然地理与旅行专题', cover: 1, assignments: [{ employeeId:2,topic:'专题稿件已完成通读',note:'待补充两处图注来源。',updatedAt:'2026-10-20 10:15' },{ employeeId:4,topic:'终审意见等待回收',note:'已将审校意见发送给责任编辑。',updatedAt:'2026-10-19 11:05' }] },
-  { id: 3, title: '新手艺人', code: 'BOOK-2026-021', type: '图书', deadline: '2026-11-26', note: '记录新一代手工艺从业者', cover: 2, assignments: [{ employeeId:1,topic:'采访稿结构重排',note:'准备按地域重新组织章节。',updatedAt:'2026-10-18 17:30' },{ employeeId:3,topic:'内页版式完成首轮',note:'已完成样章 24 页排版。',updatedAt:'2026-10-20 13:10' },{ employeeId:5,topic:'人物资料待补齐',note:'尚缺两位受访者的授权照片。',updatedAt:'2026-10-20 08:50' }] },
-  { id: 4, title: '文学现场 · 第六期', code: 'MAG-2026-039', type: '期刊', deadline: '2026-10-24', note: '当代文学访谈与评论', cover: 3, assignments: [{ employeeId:4,topic:'终审校样已确认',note:'未发现新的文字问题。',updatedAt:'2026-10-20 15:00' },{ employeeId:5,topic:'作者修改内容已合并',note:'最终稿已归档。',updatedAt:'2026-10-20 14:35' }] },
-  { id: 5, title: '沿海公路旅行手册', code: 'BOOK-2026-025', type: '图书', deadline: '2026-12-08', note: '自驾路线与沿途文化指南', cover: 4, assignments: [{ employeeId:2,topic:'路线资料开始核对',note:'',updatedAt:'2026-10-17 10:20' },{ employeeId:3,topic:'等待地图素材',note:'设计工作将在地图素材到齐后开始。',updatedAt:'2026-10-16 09:45' }] }
-];
-
-let publications = JSON.parse(localStorage.getItem('kanxing_publications') || 'null') || initialPublications;
-const legacyTopicMap = {
-  '待开始': '等待任务启动',
-  '编辑中': '当前编辑工作推进中',
-  '待审核': '当前成果等待审核',
-  '已提交': '当前成果已经提交',
-  '已审核': '审核工作已经完成',
-  '已完成': '当前任务已经完成'
-};
-publications.forEach(pub => pub.assignments.forEach(assignment => {
-  const previousValue = assignment.topic || assignment.status;
-  if (legacyTopicMap[previousValue]) assignment.topic = legacyTopicMap[previousValue];
-  delete assignment.status;
-}));
-localStorage.setItem('kanxing_publications', JSON.stringify(publications));
+let publications = [];
 let currentPage = 'dashboard';
 let searchTerm = '';
 let currentEmployee = null;
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
-const save = () => localStorage.setItem('kanxing_publications', JSON.stringify(publications));
+let authToken = sessionStorage.getItem('kanxing_token');
+async function api(path, options = {}) {
+  const response = await fetch(`/api${path}`, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}), ...options.headers }
+  });
+  const result = await response.json();
+  if (!response.ok) {
+    if (response.status === 401 && path !== '/auth/login') logout();
+    throw new Error(result.error || '请求失败');
+  }
+  return result;
+}
+async function refreshData() {
+  [employees, publications] = await Promise.all([api('/employees'), api('/publications')]);
+}
+function reportError(error) { showToast(error.message || '操作失败，请稍后重试'); }
 const employeeById = id => employees.find(item => item.id === Number(id));
 const escapeHTML = value => String(value ?? '').replace(/[&<>'"]/g, character => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[character]));
-const avatar = person => `<i class="avatar avatar--${person.color}">${person.avatar}</i>`;
-const cover = (pub, index = 0) => `<span class="book-cover cover-${pub.cover ?? index % 5}">${pub.title.slice(0,1)}</span>`;
-const pubMain = (pub, index) => `<div class="pub-main">${cover(pub,index)}<span class="pub-copy"><strong>${pub.title}</strong><small>${pub.code} · ${pub.type}</small></span></div>`;
+const avatar = person => person ? `<i class="avatar avatar--${escapeHTML(person.color)}">${escapeHTML(person.avatar)}</i>` : '';
+const cover = (pub, index = 0) => `<span class="book-cover cover-${Number(pub.cover ?? index % 5) % 5}">${escapeHTML(pub.title.slice(0,1))}</span>`;
+const pubMain = (pub, index) => `<div class="pub-main">${cover(pub,index)}<span class="pub-copy"><strong>${escapeHTML(pub.title)}</strong><small>${escapeHTML(pub.code)} · ${escapeHTML(pub.type)}</small></span></div>`;
 const employeeReportList = (pub, limit = 3) => pub.assignments.length
-  ? `<div class="employee-report-list">${pub.assignments.slice(0,limit).map(a => { const p=employeeById(a.employeeId); return `<span class="employee-report-tag"><b>${p.name}</b><i>${escapeHTML(a.topic || '尚未提交主题')}</i></span>`; }).join('')}${pub.assignments.length > limit ? `<small>+${pub.assignments.length-limit}</small>` : ''}</div>`
+  ? `<div class="employee-report-list">${pub.assignments.slice(0,limit).map(a => { const p=employeeById(a.employeeId); return `<span class="employee-report-tag"><b>${escapeHTML(p?.name || '未知员工')}</b><i>${escapeHTML(a.topic || '尚未提交主题')}</i></span>`; }).join('')}${pub.assignments.length > limit ? `<small>+${pub.assignments.length-limit}</small>` : ''}</div>`
   : '<span class="unassigned-text">尚未分配员工</span>';
 const filteredPublications = () => publications.filter(pub => !searchTerm || `${pub.title}${pub.code}${pub.type}${pub.assignments.map(a => `${employeeById(a.employeeId)?.name}${a.topic || ''}${a.note || ''}`).join('')}`.toLowerCase().includes(searchTerm.toLowerCase()));
 
@@ -86,8 +80,8 @@ function renderDashboard() {
       <div class="button-row"><button class="secondary-button" data-nav="progress">${icons.chart} 查看报告</button><button class="primary-button" data-action="create">${icons.plus} 创建书刊</button></div>
     </section>
     <section class="stats-grid">
-      ${statCard('book','orange','书刊总数',publications.length,'本','较上月 +2','up')}
-      ${statCard('users','blue','员工任务',allAssignments.length,'项','涉及 5 位员工')}
+      ${statCard('book','orange','书刊总数',publications.length,'本','当前项目')}
+      ${statCard('users','blue','员工任务',allAssignments.length,'项',`涉及 ${new Set(allAssignments.map(a => a.employeeId)).size} 位员工`)}
       ${statCard('chart','amber','今日更新',todayCount,'份','员工最新提交')}
       ${statCard('grid','green','待填写主题',missingCount,'项','按员工任务统计',missingCount ? '' : 'up')}
     </section>
@@ -99,10 +93,7 @@ function renderDashboard() {
       <div class="panel">
         <div class="panel-header"><div><h3>最新动态</h3><p>团队最近的工作记录</p></div><button class="icon-button">${icons.dots}</button></div>
         <div class="activity-list">
-          ${activity(employees[1],'周晓','提交了《城市与微光》的文字初稿','8 分钟前')}
-          ${activity(employees[3],'许言','完成了《文学现场 · 第六期》的终审','36 分钟前')}
-          ${activity(employees[2],'陈叙','更新了《新手艺人》的版式设计','2 小时前')}
-          ${activity(employees[0],'林默','开始编辑《城市与微光》','昨天 17:42')}
+          ${publications.flatMap(pub => pub.assignments.filter(a => a.updatedAt).map(a => ({ pub, assignment: a }))).sort((a,b) => b.assignment.updatedAt.localeCompare(a.assignment.updatedAt)).slice(0,4).map(({pub,assignment}) => { const person = employeeById(assignment.employeeId); return activity(person, person?.name || '员工', `更新了《${pub.title}》的进度`, assignment.updatedAt); }).join('') || '<p class="muted">暂无员工进度动态</p>'}
         </div>
       </div>
     </section>`;
@@ -114,25 +105,25 @@ function statCard(iconName, color, title, value, unit, note, noteClass='') {
 function publicationRow(pub,index) {
   return `<article class="publication-row"><button type="button" class="publication-open" data-open="${pub.id}" aria-label="查看《${escapeHTML(pub.title)}》详情">${pubMain(pub,index)}</button>${employeeReportList(pub)}<span class="deadline-copy">截止 ${pub.deadline.slice(5).replace('-','/')}</span></article>`;
 }
-function activity(person,name,text,time) { return `<div class="activity-item">${avatar(person)}<div class="activity-copy"><p><strong>${name}</strong> ${text}</p><small>${time}</small></div></div>`; }
+function activity(person,name,text,time) { return `<div class="activity-item">${avatar(person)}<div class="activity-copy"><p><strong>${escapeHTML(name)}</strong> ${escapeHTML(text)}</p><small>${escapeHTML(time)}</small></div></div>`; }
 function emptyState() { return '<div class="empty-state"><span>⌕</span>没有找到符合条件的书刊</div>'; }
 
 function renderPublications() {
   const items = filteredPublications();
   return `${pageToolbar('书刊管理','创建、查看并管理全部书刊','创建书刊')}
   <div class="data-panel"><table class="data-table"><thead><tr><th>书刊信息</th><th>员工最新报告主题</th><th>截止日期</th><th>操作</th></tr></thead><tbody>
-  ${items.map((pub,i) => `<tr><td><button type="button" class="publication-open" data-open="${pub.id}" aria-label="查看《${escapeHTML(pub.title)}》详情">${pubMain(pub,i)}</button></td><td>${employeeReportList(pub,5)}</td><td>${pub.deadline}</td><td><div class="action-cell"><button class="table-action" title="编辑" data-edit="${pub.id}">${icons.edit}</button><button class="table-action" title="分配员工" data-assign="${pub.id}">${icons.userPlus}</button></div></td></tr>`).join('') || `<tr><td colspan="4">${emptyState()}</td></tr>`}
+  ${items.map((pub,i) => `<tr><td><button type="button" class="publication-open" data-open="${pub.id}" aria-label="查看《${escapeHTML(pub.title)}》详情">${pubMain(pub,i)}</button></td><td>${employeeReportList(pub,5)}</td><td>${escapeHTML(pub.deadline)}</td><td><div class="action-cell"><button class="table-action" title="编辑" data-edit="${pub.id}">${icons.edit}</button><button class="table-action" title="分配员工" data-assign="${pub.id}">${icons.userPlus}</button><button class="table-action" title="删除" data-delete="${pub.id}">×</button></div></td></tr>`).join('') || `<tr><td colspan="4">${emptyState()}</td></tr>`}
   </tbody></table></div>`;
 }
 
 function renderAssignments() {
   return `${pageToolbar('任务分配','为每一本书刊选择参与协作的员工','', false)}
-  <section class="assignment-cards">${filteredPublications().map((pub,i) => `<article class="assignment-card"><div class="assignment-card__top">${cover(pub,i)}<div><h3>${pub.title}</h3><p>${pub.code} · 截止 ${pub.deadline}</p></div><button class="secondary-button" data-assign="${pub.id}">${icons.userPlus} 分配</button></div><div class="assigned-list">${pub.assignments.length ? pub.assignments.map(a => { const p=employeeById(a.employeeId); return `<span class="employee-chip">${avatar(p)} ${p.name} · ${escapeHTML(a.topic || '尚未提交主题')}</span>`; }).join('') : '<span class="muted" style="font-size:10px">尚未分配员工</span>'}</div></article>`).join('') || emptyState()}</section>`;
+  <section class="assignment-cards">${filteredPublications().map((pub,i) => `<article class="assignment-card"><div class="assignment-card__top">${cover(pub,i)}<div><h3>${escapeHTML(pub.title)}</h3><p>${escapeHTML(pub.code)} · 截止 ${escapeHTML(pub.deadline)}</p></div><button class="secondary-button" data-assign="${pub.id}">${icons.userPlus} 分配</button></div><div class="assigned-list">${pub.assignments.length ? pub.assignments.map(a => { const p=employeeById(a.employeeId); return `<span class="employee-chip">${avatar(p)} ${escapeHTML(p?.name || '未知员工')} · ${escapeHTML(a.topic || '尚未提交主题')}</span>`; }).join('') : '<span class="muted" style="font-size:10px">尚未分配员工</span>'}</div></article>`).join('') || emptyState()}</section>`;
 }
 
 function renderProgress() {
   return `${pageToolbar('进度报告','按书刊查看每位员工提交的最新主题与备注','', false)}
-  <section class="progress-board">${filteredPublications().map((pub,i) => `<article class="progress-book"><header class="progress-book__head">${cover(pub,i)}<span><strong>${pub.title}</strong><small>${pub.code} · 截止 ${pub.deadline}</small></span><span class="assignment-count">${pub.assignments.length} 位员工</span></header><div class="employee-reports">${pub.assignments.length ? pub.assignments.map(a => { const p=employeeById(a.employeeId); return `<article class="employee-report">${avatar(p)}<div class="employee-report__content"><header><span><strong>${p.name}</strong><small>${p.role}</small></span><time>${escapeHTML(a.updatedAt || '尚未提交')}</time></header><h4>${escapeHTML(a.topic || '尚未提交进度主题')}</h4><p>${escapeHTML(a.note || '暂无备注信息')}</p></div></article>`; }).join('') : '<div class="employee-report employee-report--empty"><span class="muted">尚未分配员工，请先前往任务分配。</span></div>'}</div></article>`).join('') || emptyState()}</section>`;
+  <section class="progress-board">${filteredPublications().map((pub,i) => `<article class="progress-book"><header class="progress-book__head">${cover(pub,i)}<span><strong>${escapeHTML(pub.title)}</strong><small>${escapeHTML(pub.code)} · 截止 ${escapeHTML(pub.deadline)}</small></span><span class="assignment-count">${pub.assignments.length} 位员工</span></header><div class="employee-reports">${pub.assignments.length ? pub.assignments.map(a => { const p=employeeById(a.employeeId); return `<article class="employee-report">${avatar(p)}<div class="employee-report__content"><header><span><strong>${escapeHTML(p?.name || '未知员工')}</strong><small>${escapeHTML(p?.role || '')}</small></span><time>${escapeHTML(a.updatedAt || '尚未提交')}</time></header><h4>${escapeHTML(a.topic || '尚未提交进度主题')}</h4><p>${escapeHTML(a.note || '暂无备注信息')}</p></div></article>`; }).join('') : '<div class="employee-report employee-report--empty"><span class="muted">尚未分配员工，请先前往任务分配。</span></div>'}</div></article>`).join('') || emptyState()}</section>`;
 }
 
 function renderEmployeeWorkspace() {
@@ -145,7 +136,7 @@ function renderEmployeeWorkspace() {
 
   $('#employeeContent').innerHTML = `
     <section class="employee-welcome">
-      <div><p class="eyebrow eyebrow--orange">MY PUBLICATIONS</p><h2>${currentEmployee.name}，今天也辛苦了</h2><p>你当前负责 ${tasks.length} 本书刊，请用主题概括最新进度，并补充必要备注。</p></div>
+      <div><p class="eyebrow eyebrow--orange">MY PUBLICATIONS</p><h2>${escapeHTML(currentEmployee.name)}，今天也辛苦了</h2><p>你当前负责 ${tasks.length} 本书刊，请用主题概括最新进度，并补充必要备注。</p></div>
       <span class="employee-date">${formatNow().slice(0, 10).replaceAll('-', ' / ')}</span>
     </section>
     <section class="employee-summary" aria-label="任务概览">
@@ -160,17 +151,16 @@ function renderEmployeeWorkspace() {
     </section>`;
 
   $$('.employee-task-form').forEach(form => {
-    form.onsubmit = event => {
+    form.onsubmit = async event => {
       event.preventDefault();
       const pub = publications.find(item => item.id === Number(form.dataset.pub));
-      const assignment = pub.assignments.find(item => item.employeeId === currentEmployee.id);
       const data = new FormData(form);
-      assignment.topic = String(data.get('topic') || '').trim();
-      assignment.note = String(data.get('note') || '').trim();
-      assignment.updatedAt = formatNow();
-      save();
-      renderEmployeeWorkspace();
-      showToast(`《${pub.title}》的最新进度报告已保存`);
+      try {
+        await api(`/publications/${pub.id}/report`, { method: 'PUT', body: JSON.stringify({ topic: String(data.get('topic') || '').trim(), note: String(data.get('note') || '').trim() }) });
+        await refreshData();
+        renderEmployeeWorkspace();
+        showToast(`《${pub.title}》的最新进度报告已保存`);
+      } catch (error) { reportError(error); }
     };
   });
 }
@@ -181,8 +171,8 @@ function employeeTaskCard(pub, assignment, index) {
   return `<form class="employee-task-card employee-task-form" data-pub="${pub.id}">
     <header class="employee-task-card__head">
       ${cover(pub, index)}
-      <div class="employee-task-title"><span class="publication-type">${pub.type}</span><h3>${pub.title}</h3><p>${pub.code}</p></div>
-      <span class="deadline-badge"><small>截止日期</small><strong>${pub.deadline}</strong></span>
+      <div class="employee-task-title"><span class="publication-type">${escapeHTML(pub.type)}</span><h3>${escapeHTML(pub.title)}</h3><p>${escapeHTML(pub.code)}</p></div>
+      <span class="deadline-badge"><small>截止日期</small><strong>${escapeHTML(pub.deadline)}</strong></span>
     </header>
     <div class="employee-task-card__body">
       <label class="employee-field employee-field--topic"><span>进度主题</span><input name="topic" value="${topic}" maxlength="60" placeholder="例如：第三章初稿已完成" required /></label>
@@ -199,7 +189,7 @@ function formatNow() {
 }
 
 function pageToolbar(title, subtitle, buttonText='', showFilter=true) {
-  return `<section class="page-toolbar"><div class="toolbar-title"><h2>${title}</h2><p>${subtitle}</p></div><label class="toolbar-search">${icons.search}<input class="page-search" value="${searchTerm}" placeholder="搜索书刊…" /></label>${showFilter ? '<select class="filter-select page-filter"><option value="">全部类型</option><option>图书</option><option>期刊</option></select>' : ''}${buttonText ? `<button class="primary-button" data-action="create">${icons.plus} ${buttonText}</button>` : ''}</section>`;
+  return `<section class="page-toolbar"><div class="toolbar-title"><h2>${title}</h2><p>${subtitle}</p></div><label class="toolbar-search">${icons.search}<input class="page-search" value="${escapeHTML(searchTerm)}" placeholder="搜索书刊…" /></label>${showFilter ? '<select class="filter-select page-filter"><option value="">全部类型</option><option>图书</option><option>期刊</option></select>' : ''}${buttonText ? `<button class="primary-button" data-action="create">${icons.plus} ${buttonText}</button>` : ''}</section>`;
 }
 
 function renderPage() {
@@ -218,6 +208,7 @@ function bindPageEvents() {
   $$('[data-action="create"]').forEach(btn => btn.onclick = () => openPublicationModal());
   $$('[data-edit]').forEach(btn => btn.onclick = () => openPublicationModal(Number(btn.dataset.edit)));
   $$('[data-assign]').forEach(btn => btn.onclick = () => openAssignmentModal(Number(btn.dataset.assign)));
+  $$('[data-delete]').forEach(btn => btn.onclick = () => deletePublication(Number(btn.dataset.delete)));
   $$('.page-search').forEach(input => input.oninput = e => { searchTerm=e.target.value; renderPage(); const active=$('.page-search'); active?.focus(); active?.setSelectionRange(active.value.length,active.value.length); });
   $$('.page-filter').forEach(select => select.onchange = e => filterVisibleCards(e.target.value, 'type'));
 }
@@ -250,30 +241,42 @@ function openPublicationDetails(id) {
 function openPublicationModal(id = null) {
   const pub = publications.find(item => item.id === id);
   $('#modalRoot').innerHTML = `<div class="modal-backdrop"><form class="modal" id="publicationForm"><header class="modal-header"><h3>${pub?'编辑书刊':'创建新书刊'}</h3><button type="button" class="icon-button modal-close">×</button></header><div class="modal-body"><div class="form-grid">
-    <label class="field field--full">书刊名称<input name="title" value="${pub?.title||''}" placeholder="例如：城市与微光" required /></label>
-    <label class="field">书刊编号<input name="code" value="${pub?.code||''}" placeholder="BOOK-2026-001" required /></label>
+    <label class="field field--full">书刊名称<input name="title" value="${escapeHTML(pub?.title||'')}" placeholder="例如：城市与微光" required /></label>
+    <label class="field">书刊编号<input name="code" value="${escapeHTML(pub?.code||'')}" placeholder="BOOK-2026-001" required /></label>
     <label class="field">类型<select name="type"><option ${pub?.type==='图书'?'selected':''}>图书</option><option ${pub?.type==='期刊'?'selected':''}>期刊</option></select></label>
-    <label class="field field--full">截止日期<input type="date" name="deadline" value="${pub?.deadline||'2026-11-30'}" required /></label>
-    <label class="field field--full">备注<textarea name="note" placeholder="简单描述这本书刊…">${pub?.note||''}</textarea></label>
+    <label class="field field--full">截止日期<input type="date" name="deadline" value="${pub?.deadline||new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10)}" required /></label>
+    <label class="field field--full">备注<textarea name="note" placeholder="简单描述这本书刊…">${escapeHTML(pub?.note||'')}</textarea></label>
   </div></div><footer class="modal-footer"><button type="button" class="secondary-button modal-close">取消</button><button type="submit" class="primary-button">${pub?'保存修改':'确认创建'}</button></footer></form></div>`;
   bindModalClose();
-  $('#publicationForm').onsubmit = e => {
+  $('#publicationForm').onsubmit = async e => {
     e.preventDefault(); const data=Object.fromEntries(new FormData(e.target));
-    if(pub) Object.assign(pub,data); else publications.unshift({ id:Date.now(), ...data, cover:publications.length%5, assignments:[] });
-    save(); closeModal(); renderPage(); showToast(pub?'书刊信息已更新':'新书刊已创建');
+    try {
+      await api(pub ? `/publications/${pub.id}` : '/publications', { method: pub ? 'PUT' : 'POST', body: JSON.stringify({ ...data, cover: publications.length % 5 }) });
+      await refreshData(); closeModal(); renderPage(); showToast(pub?'书刊信息已更新':'新书刊已创建');
+    } catch (error) { reportError(error); }
   };
 }
 
 function openAssignmentModal(id) {
   const pub = publications.find(item => item.id === id);
   const selected = new Set(pub.assignments.map(a => a.employeeId));
-  $('#modalRoot').innerHTML = `<div class="modal-backdrop"><form class="modal" id="assignmentForm"><header class="modal-header"><div><h3>分配员工</h3><p class="muted" style="margin:5px 0 0;font-size:10px">${pub.title}</p></div><button type="button" class="icon-button modal-close">×</button></header><div class="modal-body"><div class="people-picker">${employees.map(p => `<label class="person-option">${avatar(p)}<span><strong>${p.name}</strong><small>${p.role}</small></span><input type="checkbox" name="employee" value="${p.id}" ${selected.has(p.id)?'checked':''} /></label>`).join('')}</div></div><footer class="modal-footer"><button type="button" class="secondary-button modal-close">取消</button><button type="submit" class="primary-button">保存分配</button></footer></form></div>`;
+  $('#modalRoot').innerHTML = `<div class="modal-backdrop"><form class="modal" id="assignmentForm"><header class="modal-header"><div><h3>分配员工</h3><p class="muted" style="margin:5px 0 0;font-size:10px">${escapeHTML(pub.title)}</p></div><button type="button" class="icon-button modal-close">×</button></header><div class="modal-body"><div class="people-picker">${employees.map(p => `<label class="person-option">${avatar(p)}<span><strong>${escapeHTML(p.name)}</strong><small>${escapeHTML(p.role)}</small></span><input type="checkbox" name="employee" value="${p.id}" ${selected.has(p.id)?'checked':''} /></label>`).join('')}</div></div><footer class="modal-footer"><button type="button" class="secondary-button modal-close">取消</button><button type="submit" class="primary-button">保存分配</button></footer></form></div>`;
   bindModalClose();
-  $('#assignmentForm').onsubmit = e => {
+  $('#assignmentForm').onsubmit = async e => {
     e.preventDefault(); const ids=[...new FormData(e.target).getAll('employee')].map(Number);
-    pub.assignments = ids.map(employeeId => pub.assignments.find(a=>a.employeeId===employeeId) || { employeeId, topic:'', note:'', updatedAt:'' });
-    save(); closeModal(); renderPage(); showToast(`已更新《${pub.title}》的员工分配`);
+    try {
+      await api(`/publications/${id}/assignments`, { method: 'PUT', body: JSON.stringify({ employeeIds: ids }) });
+      await refreshData(); closeModal(); renderPage(); showToast(`已更新《${pub.title}》的员工分配`);
+    } catch (error) { reportError(error); }
   };
+}
+async function deletePublication(id) {
+  const pub = publications.find(item => item.id === id);
+  if (!pub || !confirm(`确定删除《${pub.title}》及其任务报告吗？`)) return;
+  try {
+    await api(`/publications/${id}`, { method: 'DELETE' });
+    await refreshData(); renderPage(); showToast('书刊已删除');
+  } catch (error) { reportError(error); }
 }
 function bindModalClose() { $$('.modal-close').forEach(btn=>btn.onclick=closeModal); $('.modal-backdrop').onclick=e=>{if(e.target.classList.contains('modal-backdrop'))closeModal();}; }
 function closeModal() { $('#modalRoot').innerHTML=''; }
@@ -281,23 +284,18 @@ function closeModal() { $('#modalRoot').innerHTML=''; }
 function init() {
   hydrateIcons();
   restoreSession();
-  $('#loginForm').onsubmit = e => {
+  $('#loginForm').onsubmit = async e => {
     e.preventDefault();
     const username = $('#username').value.trim().toLowerCase();
     const password = $('#password').value;
-    if (password !== '123456') return showToast('账号或密码错误，请检查后重试');
-    if (username === 'admin') {
-      sessionStorage.setItem('kanxing_session', JSON.stringify({ role: 'admin' }));
-      enterAdminApp();
-      return;
-    }
-    const employee = employees.find(item => item.username === username);
-    if (employee) {
-      sessionStorage.setItem('kanxing_session', JSON.stringify({ role: 'employee', employeeId: employee.id }));
-      enterEmployeeApp(employee);
-      return;
-    }
-    showToast('账号或密码错误，请使用页面中的演示账号');
+    try {
+      const result = await api('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) });
+      authToken = result.token;
+      sessionStorage.setItem('kanxing_token', authToken);
+      await refreshData();
+      if (result.user.role === 'admin') enterAdminApp();
+      else enterEmployeeApp(employeeById(result.user.employeeId));
+    } catch (error) { reportError(error); }
   };
   $('.eye-button').onclick = () => { const field=$('#password'); field.type=field.type==='password'?'text':'password'; };
   $('#forgotLink').onclick = e => { e.preventDefault(); showToast('演示环境统一使用密码 123456'); };
@@ -311,18 +309,20 @@ function init() {
   $('#employeeLogoutButton').onclick = logout;
   $('#menuButton').onclick = () => $('.sidebar').classList.toggle('open');
   $('#employeeMenuButton').onclick = () => $('.employee-sidebar').classList.toggle('open');
-  $('#settingsButton').onclick = () => showToast('系统设置为前端演示功能');
+  $('#settingsButton').onclick = async () => {
+    try { await api('/health'); showToast('数据库连接正常'); }
+    catch (error) { reportError(error); }
+  };
   $('#globalSearch').oninput = e => { searchTerm=e.target.value; if(currentPage==='dashboard') currentPage='publications'; renderPage(); };
 }
 
 function restoreSession() {
-  const legacyAdmin = sessionStorage.getItem('kanxing_logged_in') === '1';
-  const session = JSON.parse(sessionStorage.getItem('kanxing_session') || 'null');
-  if (legacyAdmin || session?.role === 'admin') enterAdminApp();
-  if (session?.role === 'employee') {
-    const employee = employeeById(session.employeeId);
-    if (employee) enterEmployeeApp(employee);
-  }
+  if (!authToken) return;
+  api('/auth/me').then(async ({ user }) => {
+    await refreshData();
+    if (user.role === 'admin') enterAdminApp();
+    else if (employeeById(user.employeeId)) enterEmployeeApp(employeeById(user.employeeId));
+  }).catch(reportError);
 }
 
 function hideAllViews() {
@@ -352,8 +352,8 @@ function enterEmployeeApp(employee) {
 }
 
 function logout() {
-  sessionStorage.removeItem('kanxing_logged_in');
-  sessionStorage.removeItem('kanxing_session');
+  sessionStorage.removeItem('kanxing_token');
+  authToken = null;
   currentEmployee = null;
   hideAllViews();
   $('#loginView').classList.remove('is-hidden');
