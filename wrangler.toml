@@ -6,4 +6,4 @@ compatibility_date = "2024-10-20"
 binding = "DB"
 database_name = "journal_db"
 # Replace with the id returned by `npx wrangler d1 create journal_db` before deploying.
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "54cef726-5bd0-47d2-98d0-e2dad07f9b51"
