@@ -195,7 +195,7 @@ async function serveStatic(path, corsHeaders) {
   return new Response(fileContent, {
     headers: {
       'Content-Type': fileConfig.type,
-      'Cache-Control': 'public, max-age=3600',
+      'Cache-Control': fileConfig.file === 'index.html' ? 'no-cache' : 'public, max-age=3600',
       ...corsHeaders
     }
   });

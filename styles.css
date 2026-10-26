@@ -139,6 +139,9 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .publication-row { display:grid; grid-template-columns:minmax(180px,.95fr) minmax(300px,1.4fr) 76px; gap:18px; align-items:center; min-height:88px; border-bottom:1px solid #f0eee9; }
 .publication-row:last-child { border-bottom:0; }
 .pub-main { display:flex; align-items:center; min-width:0; gap:12px; }
+.publication-open { display:block; width:100%; padding:0; border:0; color:inherit; background:transparent; text-align:left; cursor:pointer; }
+.publication-open:hover .pub-copy strong, .publication-open:focus-visible .pub-copy strong { color:var(--orange); }
+.publication-open:focus-visible { outline:2px solid var(--orange); outline-offset:4px; border-radius:4px; }
 .book-cover { position:relative; flex:0 0 auto; display:grid; place-items:center; width:43px; height:53px; overflow:hidden; border-radius:4px 7px 7px 4px; color:#fff; font:500 16px "Songti SC",serif; box-shadow:2px 3px 7px rgba(0,0,0,.12); }
 .book-cover::before { content:""; position:absolute; left:4px; top:0; width:1px; height:100%; background:rgba(255,255,255,.25); }
 .cover-0 { background:linear-gradient(145deg,#42586b,#223140); }
@@ -222,6 +225,12 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .modal-header { display:flex; justify-content:space-between; align-items:center; padding:21px 23px; border-bottom:1px solid var(--line); }
 .modal-header h3 { margin:0; font-size:16px; }
 .modal-body { padding:22px 23px; }
+.publication-details > p { margin:0 0 12px; color:#5d5e62; font-size:12px; }
+.publication-details h4 { margin:22px 0 10px; font-size:13px; }
+.detail-report { padding:12px 0; border-top:1px solid var(--line); font-size:11px; }
+.detail-report strong { display:block; margin-bottom:5px; }
+.detail-report span { color:var(--orange); }
+.detail-report p { margin:6px 0 0; color:var(--muted); }
 .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
 .field { display:grid; gap:7px; color:#555; font-size:11px; font-weight:600; }
 .field--full { grid-column:1/-1; }

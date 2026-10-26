@@ -5,7 +5,8 @@
   "main": "src/index.js",
   "scripts": {
     "build": "node build.js",
-    "deploy": "wrangler deploy"
+    "deploy": "npm run build && wrangler deploy",
+    "dev": "npm run build && wrangler dev"
   },
   "keywords": [
     "cloudflare",

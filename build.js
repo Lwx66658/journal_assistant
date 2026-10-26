@@ -25,13 +25,16 @@ async function getStaticFile(filename) {
 }
 `;
 
-const finalWorkerCode = workerTemplate.replace(
-  /async function getStaticFile\(filename\)[\s\S]*?return null;\s*}/,
-  staticFilesMap.trim()
-);
+const staticFilePlaceholder = /async function getStaticFile\(filename\)[\s\S]*?return null;\s*}/;
+if (!staticFilePlaceholder.test(workerTemplate)) {
+  throw new Error('找不到静态资源注入位置，构建已停止');
+}
+const finalWorkerCode = workerTemplate.replace(staticFilePlaceholder, staticFilesMap.trim());
 
-// 写入构建后的文件
-fs.writeFileSync(path.join(__dirname, 'src/index.js'), finalWorkerCode, 'utf-8');
+// 将构建产物与源文件分开，避免重复构建时修改或污染入口模板。
+const outputDirectory = path.join(__dirname, 'dist');
+fs.mkdirSync(outputDirectory, { recursive: true });
+fs.writeFileSync(path.join(outputDirectory, 'worker.js'), finalWorkerCode, 'utf-8');
 
 console.log('✅ 构建完成！静态文件已打包到 Worker');
 console.log('📦 文件大小:');

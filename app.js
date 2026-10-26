@@ -112,7 +112,7 @@ function statCard(iconName, color, title, value, unit, note, noteClass='') {
   return `<article class="stat-card"><div class="stat-card__head"><span>${title}</span><span class="stat-icon stat-icon--${color}">${icons[iconName]}</span></div><strong class="stat-value">${value}<small style="font-size:11px;font-weight:500;margin-left:4px">${unit}</small></strong><span class="stat-note ${noteClass}">${note}</span></article>`;
 }
 function publicationRow(pub,index) {
-  return `<article class="publication-row">${pubMain(pub,index)}${employeeReportList(pub)}<span class="deadline-copy">截止 ${pub.deadline.slice(5).replace('-','/')}</span></article>`;
+  return `<article class="publication-row"><button type="button" class="publication-open" data-open="${pub.id}" aria-label="查看《${escapeHTML(pub.title)}》详情">${pubMain(pub,index)}</button>${employeeReportList(pub)}<span class="deadline-copy">截止 ${pub.deadline.slice(5).replace('-','/')}</span></article>`;
 }
 function activity(person,name,text,time) { return `<div class="activity-item">${avatar(person)}<div class="activity-copy"><p><strong>${name}</strong> ${text}</p><small>${time}</small></div></div>`; }
 function emptyState() { return '<div class="empty-state"><span>⌕</span>没有找到符合条件的书刊</div>'; }
@@ -121,7 +121,7 @@ function renderPublications() {
   const items = filteredPublications();
   return `${pageToolbar('书刊管理','创建、查看并管理全部书刊','创建书刊')}
   <div class="data-panel"><table class="data-table"><thead><tr><th>书刊信息</th><th>员工最新报告主题</th><th>截止日期</th><th>操作</th></tr></thead><tbody>
-  ${items.map((pub,i) => `<tr><td>${pubMain(pub,i)}</td><td>${employeeReportList(pub,5)}</td><td>${pub.deadline}</td><td><div class="action-cell"><button class="table-action" title="编辑" data-edit="${pub.id}">${icons.edit}</button><button class="table-action" title="分配员工" data-assign="${pub.id}">${icons.userPlus}</button></div></td></tr>`).join('') || `<tr><td colspan="4">${emptyState()}</td></tr>`}
+  ${items.map((pub,i) => `<tr><td><button type="button" class="publication-open" data-open="${pub.id}" aria-label="查看《${escapeHTML(pub.title)}》详情">${pubMain(pub,i)}</button></td><td>${employeeReportList(pub,5)}</td><td>${pub.deadline}</td><td><div class="action-cell"><button class="table-action" title="编辑" data-edit="${pub.id}">${icons.edit}</button><button class="table-action" title="分配员工" data-assign="${pub.id}">${icons.userPlus}</button></div></td></tr>`).join('') || `<tr><td colspan="4">${emptyState()}</td></tr>`}
   </tbody></table></div>`;
 }
 
@@ -214,6 +214,7 @@ function renderPage() {
 
 function bindPageEvents() {
   $$('[data-nav]').forEach(btn => btn.onclick = () => navigate(btn.dataset.nav));
+  $$('[data-open]').forEach(btn => btn.onclick = () => openPublicationDetails(Number(btn.dataset.open)));
   $$('[data-action="create"]').forEach(btn => btn.onclick = () => openPublicationModal());
   $$('[data-edit]').forEach(btn => btn.onclick = () => openPublicationModal(Number(btn.dataset.edit)));
   $$('[data-assign]').forEach(btn => btn.onclick = () => openAssignmentModal(Number(btn.dataset.assign)));
@@ -234,6 +235,16 @@ function filterVisibleCards(value, mode) {
 
 function navigate(page) {
   currentPage = page; searchTerm=''; renderPage(); $('.sidebar').classList.remove('open');
+}
+
+function openPublicationDetails(id) {
+  const pub = publications.find(item => item.id === id);
+  if (!pub) return;
+  $('#modalRoot').innerHTML = `<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" aria-label="${escapeHTML(pub.title)}详情"><header class="modal-header"><h3>${escapeHTML(pub.title)}</h3><button type="button" class="icon-button modal-close" aria-label="关闭">×</button></header><div class="modal-body publication-details"><p><strong>编号：</strong>${escapeHTML(pub.code)} · ${escapeHTML(pub.type)}</p><p><strong>截止日期：</strong>${escapeHTML(pub.deadline)}</p><p><strong>备注：</strong>${escapeHTML(pub.note || '暂无备注')}</p><h4>员工进度</h4>${pub.assignments.length ? pub.assignments.map(a => { const person = employeeById(a.employeeId); return `<article class="detail-report"><strong>${escapeHTML(person?.name || '未知员工')}</strong><span>${escapeHTML(a.topic || '尚未提交主题')}</span><p>${escapeHTML(a.note || '暂无备注')}</p></article>`; }).join('') : '<p>尚未分配员工</p>'}</div><footer class="modal-footer"><button type="button" class="secondary-button" data-detail-assign>分配员工</button><button type="button" class="primary-button" data-detail-edit>编辑书刊</button></footer></section></div>`;
+  bindModalClose();
+  $('[data-detail-assign]').onclick = () => openAssignmentModal(id);
+  $('[data-detail-edit]').onclick = () => openPublicationModal(id);
+  $('.modal-close').focus();
 }
 
 function openPublicationModal(id = null) {
